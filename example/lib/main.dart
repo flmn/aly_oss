@@ -25,10 +25,23 @@ class _MyAppState extends State<MyApp> {
               RaisedButton(
                 color: Theme.of(context).primaryColor,
                 textColor: Colors.white,
-                child: Text("TEST"),
+                child: Text('INIT'),
                 onPressed: () {
-                  alyOss1.upload();
+                  alyOss1.init();
                 },
+              ),
+              RaisedButton(
+                color: Theme.of(context).primaryColor,
+                textColor: Colors.white,
+                child: Text('UPLOAD'),
+                onPressed: () {
+                  alyOss1.upload(
+                      'brand-happysyrup-com', 'ws/a.jpg', 'assets/tower.jpg');
+                },
+              ),
+              Image.asset(
+                'assets/tower.jpg',
+                height: 480,
               ),
             ],
           ),
