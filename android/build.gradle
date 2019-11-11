@@ -25,7 +25,7 @@ android {
     compileSdkVersion 28
 
     defaultConfig {
-        minSdkVersion 16
+        minSdkVersion 21
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     lintOptions {
@@ -34,5 +34,6 @@ android {
 }
 
 dependencies {
+    implementation 'com.google.guava:guava:28.1-android'
     implementation 'com.aliyun.dpa:oss-android-sdk:+'
 }

@@ -17,7 +17,7 @@ class AlyOss {
     print('AlyOss: ' + _id);
   }
 
-  static Future<dynamic> _handler(MethodCall methodCall) {
+  static Future<dynamic> _handler(MethodCall methodCall) async {
     print(
         'Call from platform: method=${methodCall.method}, arguments=${methodCall.arguments}');
 
