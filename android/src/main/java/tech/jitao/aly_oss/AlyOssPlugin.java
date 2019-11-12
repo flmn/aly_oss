@@ -1,12 +1,29 @@
 package tech.jitao.aly_oss;
 
+import com.alibaba.sdk.android.oss.ClientConfiguration;
+import com.alibaba.sdk.android.oss.ClientException;
 import com.alibaba.sdk.android.oss.OSS;
 import com.alibaba.sdk.android.oss.OSSClient;
+import com.alibaba.sdk.android.oss.ServiceException;
+import com.alibaba.sdk.android.oss.callback.OSSCompletedCallback;
+import com.alibaba.sdk.android.oss.callback.OSSProgressCallback;
+import com.alibaba.sdk.android.oss.common.OSSConstants;
+import com.alibaba.sdk.android.oss.common.auth.OSSCredentialProvider;
 import com.alibaba.sdk.android.oss.common.auth.OSSCustomSignerCredentialProvider;
+import com.alibaba.sdk.android.oss.common.auth.OSSFederationCredentialProvider;
+import com.alibaba.sdk.android.oss.common.auth.OSSFederationToken;
+import com.alibaba.sdk.android.oss.common.utils.IOUtils;
 import com.alibaba.sdk.android.oss.common.utils.OSSUtils;
+import com.alibaba.sdk.android.oss.internal.OSSAsyncTask;
 import com.alibaba.sdk.android.oss.model.PutObjectRequest;
+import com.alibaba.sdk.android.oss.model.PutObjectResult;
 import com.google.common.collect.Maps;
 
+import org.json.JSONObject;
+
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -50,48 +67,129 @@ public class AlyOssPlugin implements MethodCallHandler {
     }
 
     private void init(MethodCall call, Result result) {
-        String id = call.argument("id");
-        String endpoint = call.argument("endpoint");
-        String accessKeyId = call.argument("accessKeyId");
-        String accessKeySecret = call.argument("accessKeySecret");
-
-        final Map<String, String> m1 = Maps.newHashMap();
-        m1.put("code", "OK");
-        m1.put("id", id);
-
-        final OSSCustomSignerCredentialProvider credentialProvider = new OSSCustomSignerCredentialProvider() {
+        final String instanceId = call.argument("instanceId");
+        final String stsServer = call.argument("stsServer");
+        final String endpoint = call.argument("endpoint");
+        final String aesKey = call.argument("aesKey");
+        final String iv = call.argument("iv");
+        final OSSCredentialProvider credentialProvider = new OSSFederationCredentialProvider() {
             @Override
-            public String signContent(String content) {
-                return OSSUtils.sign("", "", content);
+            public OSSFederationToken getFederationToken() {
+                try {
+                    URL url = new URL(stsServer);
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    InputStream input = conn.getInputStream();
+                    String data = IOUtils.readStreamAsString(input, OSSConstants.DEFAULT_CHARSET_NAME);
+                    String jsonText = AesHelper.decrypt(aesKey, iv, data);
+
+                    Log.i("StsServer", jsonText);
+
+                    JSONObject jsonObj = new JSONObject(jsonText);
+
+                    return new OSSFederationToken(jsonObj.getString("AccessKeyId"),
+                            jsonObj.getString("AccessKeySecret"),
+                            jsonObj.getString("SecurityToken"),
+                            jsonObj.getString("Expiration"));
+                } catch (Exception e) {
+                    Log.w("OSSFederationCredentialProvider", e.getMessage());
+                }
+                return null;
             }
         };
-        oss = new OSSClient(REGISTRAR.context(), endpoint, credentialProvider);
 
-        Log.i("before", "endpoint=" + endpoint);
-        CHANNEL.invokeMethod("onInit", m1);
-        Log.i("after", "endpoint=" + endpoint);
-        Log.i("init", "endpoint=" + endpoint);
+        final ClientConfiguration conf = new ClientConfiguration();
+        conf.setConnectionTimeout(15 * 1000); // 连接超时时间，默认15秒
+        conf.setSocketTimeout(15 * 1000); // Socket超时时间，默认15秒
+        conf.setMaxConcurrentRequest(5); // 最大并发请求数，默认5个
+        conf.setMaxErrorRetry(2); // 失败后最大重试次数，默认2次
 
-        CHANNEL.invokeMethod("aaa", null);
+        oss = new OSSClient(REGISTRAR.context(), endpoint, credentialProvider, conf);
 
-        Map<String, Object> map = new HashMap<>();
-        map.put("r", 1);
-
+        final Map<String, String> map = Maps.newHashMap();
+        map.put("instanceId", instanceId);
         result.success(map);
     }
 
     private void upload(MethodCall call, Result result) {
-        String id = call.argument("id");
-        String bucket = call.argument("bucket");
-        String key = call.argument("key");
-        String file = call.argument("file");
+        if (oss == null) {
+            result.error(ErrorCodes.FAILED_PRECONDITION, "not initialized", "call init first");
 
-        Log.i("upload", "id=" + id + ", bucket=" + bucket + ", key=" + key + ", file=" + file);
+            return;
+        }
+
+        final String instanceId = call.argument("instanceId");
+        final String requestId = call.argument("requestId");
+        final String bucket = call.argument("bucket");
+        final String key = call.argument("key");
+        final String file = call.argument("file");
+
+        Log.i("upload", "instanceId=" + instanceId + ", bucket=" + bucket + ", key=" + key + ", file=" + file);
         PutObjectRequest put = new PutObjectRequest(bucket, key, file);
+        put.setProgressCallback(new OSSProgressCallback<PutObjectRequest>() {
+            @Override
+            public void onProgress(PutObjectRequest request, long currentSize, long totalSize) {
+                Log.d("onProgress", "currentSize: " + currentSize + " totalSize: " + totalSize);
+                final Map<String, String> arguments = Maps.newHashMap();
+                arguments.put("instanceId", instanceId);
+                arguments.put("requestId", requestId);
+                arguments.put("bucket", bucket);
+                arguments.put("key", key);
+                arguments.put("currentSize", String.valueOf(currentSize));
+                arguments.put("totalSize", String.valueOf(totalSize));
+                REGISTRAR.activity().runOnUiThread(
+                        new Runnable() {
+                            @Override
+                            public void run() {
+                                CHANNEL.invokeMethod("onProgress", arguments);
+                            }
+                        });
+            }
+        });
 
-        Map<String, Object> map = new HashMap<>();
-        map.put("r", 1);
+        oss.asyncPutObject(put, new OSSCompletedCallback<PutObjectRequest, PutObjectResult>() {
 
+                    @Override
+                    public void onSuccess(PutObjectRequest request, PutObjectResult result) {
+                        Log.d("onSuccess", "onSuccess");
+                        Log.d("ETag", result.getETag());
+                        Log.d("RequestId", result.getRequestId());
+
+                        final Map<String, String> arguments = Maps.newHashMap();
+                        arguments.put("instanceId", instanceId);
+                        arguments.put("requestId", requestId);
+                        arguments.put("bucket", bucket);
+                        arguments.put("key", key);
+                        REGISTRAR.activity().runOnUiThread(
+                                new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        CHANNEL.invokeMethod("onUpload", arguments);
+                                    }
+                                });
+                    }
+
+                    @Override
+                    public void onFailure(PutObjectRequest request, ClientException clientException, ServiceException serviceException) {
+                        if (clientException != null) {
+                            Log.w("onFailure", "ClientException: " + clientException.getMessage());
+                        }
+
+                        if (serviceException != null) {
+                            Log.w("onFailure",
+                                    "ServiceException: ErrorCode=" + serviceException.getErrorCode() +
+                                            "RequestId" + serviceException.getRequestId() +
+                                            "HostId" + serviceException.getHostId() +
+                                            "RawMessage" + serviceException.getRawMessage());
+                        }
+                    }
+                }
+        );
+
+        final Map<String, String> map = Maps.newHashMap();
+        map.put("instanceId", instanceId);
+        map.put("requestId", requestId);
+        map.put("bucket", bucket);
+        map.put("key", key);
         result.success(map);
     }
 }

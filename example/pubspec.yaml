@@ -9,6 +9,8 @@ dependencies:
   flutter:
     sdk: flutter
 
+  image_picker: ^0.6.1+11
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -18,5 +20,5 @@ dev_dependencies:
 
 flutter:
 
-  assets:
-    - assets/tower.jpg
+#  assets:
+#    - assets/tower.jpg

@@ -6,15 +6,14 @@ import 'package:uuid/uuid.dart';
 class AlyOss {
   static final _channel = MethodChannel('jitao.tech/aly_oss')
     ..setMethodCallHandler(_handler);
-  static final _instances = new Map<String, AlyOss>();
-  static final _uuid = new Uuid();
-  String _id;
+  static final _instances = Map<String, AlyOss>();
+  String _instanceId;
 
   AlyOss() {
-    _id = _uuid.v4();
-    _instances[_id] = this;
+    _instanceId = UuidHelper.gen();
+    _instances[_instanceId] = this;
 
-    print('AlyOss: ' + _id);
+    print('AlyOss: ' + _instanceId);
   }
 
   static Future<dynamic> _handler(MethodCall methodCall) async {
@@ -24,22 +23,74 @@ class AlyOss {
     return Future.value(true);
   }
 
-  Future<Map<String, dynamic>> init() async {
-    return await _invokeMethod(
-        'init', {'endpoint': 'oss-cn-beijing.aliyuncs.com'});
+  Future<Map<String, dynamic>> init(InitRequest request) async {
+    return await _invokeMethod('init', request.toMap());
   }
 
-  Future<Map<String, dynamic>> upload(
-      String bucket, String key, String file) async {
-    return await _invokeMethod(
-        'upload', {'bucket': bucket, "key": key, "file": file});
+  Future<Map<String, dynamic>> upload(UploadRequest request) async {
+    return await _invokeMethod('upload', request.toMap());
   }
 
   Future<Map<String, dynamic>> _invokeMethod(String method,
       [Map<String, dynamic> arguments = const {}]) {
     Map<String, dynamic> withId = Map.of(arguments);
-    withId['id'] = _id;
+    withId['instanceId'] = _instanceId;
 
     return _channel.invokeMapMethod(method, withId);
+  }
+}
+
+class UuidHelper {
+  static final _uuid = Uuid();
+
+  static String gen() {
+    return _uuid.v4();
+  }
+}
+
+abstract class Request {
+  final String requestId;
+
+  Request(this.requestId);
+
+  Map<String, dynamic> toMap() {
+    return {'requestId': requestId};
+  }
+}
+
+class InitRequest extends Request {
+  final String stsServer;
+  final String endpoint;
+  final String aesKey;
+  final String iv;
+
+  InitRequest(requestId, this.stsServer, this.endpoint, this.aesKey, this.iv)
+      : super(requestId);
+
+  Map<String, dynamic> toMap() {
+    var m = Map.of(super.toMap());
+    m['stsServer'] = stsServer;
+    m['endpoint'] = endpoint;
+    m['aesKey'] = aesKey;
+    m['iv'] = iv;
+
+    return m;
+  }
+}
+
+class UploadRequest extends Request {
+  final String bucket;
+  final String key;
+  final String file;
+
+  UploadRequest(requestId, this.bucket, this.key, this.file) : super(requestId);
+
+  Map<String, dynamic> toMap() {
+    var m = Map.of(super.toMap());
+    m['bucket'] = bucket;
+    m['key'] = key;
+    m['file'] = file;
+
+    return m;
   }
 }
