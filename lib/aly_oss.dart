@@ -18,8 +18,15 @@ class AlyOss {
   }
 
   static Future<dynamic> _handler(MethodCall methodCall) async {
-    print(
-        'Call from platform: method=${methodCall.method}, arguments=${methodCall.arguments}');
+    switch (methodCall.method) {
+      case 'onProgress':
+        break;
+      case 'onUpload':
+        break;
+      default:
+        print(
+            'Call ${methodCall.method} from platform, arguments=${methodCall.arguments}');
+    }
 
     return Future.value(true);
   }
