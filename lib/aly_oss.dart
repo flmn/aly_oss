@@ -7,10 +7,11 @@ class AlyOss {
   static final _channel = MethodChannel('jitao.tech/aly_oss')
     ..setMethodCallHandler(_handler);
   static final _instances = Map<String, AlyOss>();
+  static final _uuid = Uuid();
   String _instanceId;
 
   AlyOss() {
-    _instanceId = UuidHelper.gen();
+    _instanceId = _uuid.v4();
     _instances[_instanceId] = this;
 
     print('AlyOss: ' + _instanceId);
@@ -37,14 +38,6 @@ class AlyOss {
     withId['instanceId'] = _instanceId;
 
     return _channel.invokeMapMethod(method, withId);
-  }
-}
-
-class UuidHelper {
-  static final _uuid = Uuid();
-
-  static String gen() {
-    return _uuid.v4();
   }
 }
 

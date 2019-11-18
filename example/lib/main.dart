@@ -1,6 +1,7 @@
 import 'package:aly_oss/aly_oss.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:uuid/uuid.dart';
 
 void main() => runApp(MyApp());
 
@@ -10,7 +11,8 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  AlyOss alyOss = AlyOss();
+  final _uuid = Uuid();
+  final AlyOss _alyOss = AlyOss();
 
   @override
   Widget build(BuildContext context) {
@@ -27,8 +29,8 @@ class _MyAppState extends State<MyApp> {
                 textColor: Colors.white,
                 child: Text('INIT'),
                 onPressed: () {
-                  alyOss.init(InitRequest(
-                      UuidHelper.gen(),
+                  _alyOss.init(InitRequest(
+                      _uuid.v4(),
                       'https://wsc-test.happysyrup.com/app/media/get-security-token',
                       'oss-cn-beijing.aliyuncs.com',
                       '11l%UVteM*ct@^Sn',
@@ -43,7 +45,7 @@ class _MyAppState extends State<MyApp> {
                   var image =
                       await ImagePicker.pickImage(source: ImageSource.gallery);
 
-                  alyOss.upload(UploadRequest(UuidHelper.gen(),
+                  _alyOss.upload(UploadRequest(_uuid.v4(),
                       'brand-happysyrup-com', 'ws/a.jpg', image.absolute.path));
                 },
               ),
