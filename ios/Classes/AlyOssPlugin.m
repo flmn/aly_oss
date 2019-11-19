@@ -69,7 +69,7 @@ OSSClient *oss = nil;
         } else {
             NSData *jsonText=[aesDecrypt(aesKey, iv, [[NSString alloc] initWithData:tcs.task.result encoding:NSUTF8StringEncoding]) dataUsingEncoding:NSUTF8StringEncoding];
             NSLog(@"get token aes: %@", jsonText);
-
+            
             if (jsonText == nil) {
                 return nil;
             }
@@ -86,7 +86,7 @@ OSSClient *oss = nil;
             return token;
         }
     }];
-
+    
     oss = [[OSSClient alloc] initWithEndpoint:endpoint credentialProvider:credentialProvider];
     NSDictionary *arguments = @{
         @"instanceId": instanceId,
@@ -100,6 +100,53 @@ OSSClient *oss = nil;
     if (![self checkOss:result]) {
         return;
     }
+    
+    NSString *instanceId = call.arguments[@"instanceId"];
+    NSString *requestId = call.arguments[@"requestId"];
+    NSString *bucket = call.arguments[@"bucket"];
+    NSString *key = call.arguments[@"key"];
+    NSString *file = call.arguments[@"file"];
+    
+    OSSPutObjectRequest *request = [OSSPutObjectRequest new];
+    request.bucketName = bucket;
+    request.objectKey = key;
+    request.uploadingFileURL = [NSURL fileURLWithPath:file];
+    request.uploadProgress = ^(int64_t bytesSent, int64_t totalByteSent, int64_t totalBytesExpectedToSend) {
+        NSDictionary *arguments = @{
+            @"instanceId":instanceId,
+            @"requestId":requestId,
+            @"bucket":bucket,
+            @"key":key,
+            @"currentSize":  [NSString stringWithFormat:@"%lld",totalByteSent],
+            @"totalSize": [NSString stringWithFormat:@"%lld",totalBytesExpectedToSend]
+        };
+        [CHANNEL invokeMethod:@"onProgress" arguments:arguments];
+    };
+    
+    OSSTask *task = [oss putObject:request];
+    [task continueWithBlock:^id(OSSTask *task) {
+        if (!task.error) {
+            NSDictionary *arguments = @{
+                @"success": @"true",
+                @"instanceId":instanceId,
+                @"requestId":requestId,
+                @"bucket":bucket,
+                @"key":key,
+            };
+            [CHANNEL invokeMethod:@"onUpload" arguments:arguments];
+        } else {
+            NSDictionary *arguments = @{
+                @"success": @"false",
+                @"instanceId":instanceId,
+                @"requestId":requestId,
+                @"bucket":bucket,
+                @"key":key,
+                @"message":task.error
+            };
+            [CHANNEL invokeMethod:@"onUpload" arguments:arguments];
+        }
+        return nil;
+    }];
 }
 
 - (void)exist:(FlutterMethodCall*)call result:(FlutterResult)result {
