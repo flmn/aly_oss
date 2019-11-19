@@ -1,4 +1,5 @@
 name: aly_oss_example
+version: 0.0.1
 description: Demonstrates how to use the aly_oss plugin.
 publish_to: 'none'
 

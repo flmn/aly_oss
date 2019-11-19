@@ -1,0 +1,35 @@
+PODS:
+  - AliyunOSSiOS (2.10.7)
+  - aly_oss (0.0.1):
+    - AliyunOSSiOS
+    - Flutter
+  - Flutter (1.0.0)
+  - image_picker (0.0.1):
+    - Flutter
+
+DEPENDENCIES:
+  - aly_oss (from `.symlinks/plugins/aly_oss/ios`)
+  - Flutter (from `.symlinks/flutter/ios`)
+  - image_picker (from `.symlinks/plugins/image_picker/ios`)
+
+SPEC REPOS:
+  trunk:
+    - AliyunOSSiOS
+
+EXTERNAL SOURCES:
+  aly_oss:
+    :path: ".symlinks/plugins/aly_oss/ios"
+  Flutter:
+    :path: ".symlinks/flutter/ios"
+  image_picker:
+    :path: ".symlinks/plugins/image_picker/ios"
+
+SPEC CHECKSUMS:
+  AliyunOSSiOS: 602b6a4e70e62a5f0a6431c20496343141d7e66f
+  aly_oss: 878031b14b33342a544187e9efd56884fefb231b
+  Flutter: 0e3d915762c693b495b44d77113d4970485de6ec
+  image_picker: e3eacd46b94694dde7cf2705955cece853aa1a8f
+
+PODFILE CHECKSUM: 7fb83752f59ead6285236625b82473f90b1cb932
+
+COCOAPODS: 1.8.4

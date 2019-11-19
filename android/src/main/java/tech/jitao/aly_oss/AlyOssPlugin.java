@@ -71,6 +71,7 @@ public class AlyOssPlugin implements MethodCallHandler {
 
     private void init(MethodCall call, Result result) {
         final String instanceId = call.argument("instanceId");
+        final String requestId = call.argument("requestId");
         final String stsServer = call.argument("stsServer");
         final String endpoint = call.argument("endpoint");
         final String aesKey = call.argument("aesKey");
@@ -108,9 +109,11 @@ public class AlyOssPlugin implements MethodCallHandler {
 
         oss = new OSSClient(REGISTRAR.context(), endpoint, credentialProvider, conf);
 
-        final Map<String, String> map = Maps.newHashMap();
-        map.put("instanceId", instanceId);
-        result.success(map);
+        final Map<String, String> arguments = Maps.newHashMap();
+        arguments.put("instanceId", instanceId);
+        arguments.put("requestId", requestId);
+
+        result.success(arguments);
     }
 
     private void upload(MethodCall call, Result result) {
