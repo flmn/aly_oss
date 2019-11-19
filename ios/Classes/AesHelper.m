@@ -2,43 +2,40 @@
 #import "AesHelper.h"
 
 NSString * aesDecrypt(NSString *key, NSString *iv, NSString *data) {
-    NSCParameterAssert(key);
-    NSCParameterAssert(iv);
-    NSCParameterAssert(data);
+    char keyPtr[kCCKeySizeAES128+1];
+    bzero(keyPtr, sizeof(keyPtr));
+    [key getCString:keyPtr maxLength:sizeof(keyPtr) encoding:NSUTF8StringEncoding];
     
-    void const *keyBytes = [key dataUsingEncoding:NSUTF8StringEncoding].bytes;
-    void const *ivBytes = [iv dataUsingEncoding:NSUTF8StringEncoding].bytes;
+    char ivPtr[kCCKeySizeAES128+1];
+    bzero(ivPtr, sizeof(ivPtr));
+    [iv getCString:ivPtr maxLength:sizeof(ivPtr) encoding:NSUTF8StringEncoding];
+
     NSData *contentData = [[NSData alloc] initWithBase64EncodedString:data options:NSDataBase64DecodingIgnoreUnknownCharacters];
     NSUInteger dataLength = contentData.length;
-    void const *contentBytes = contentData.bytes;
+    size_t bufferSize = dataLength + kCCBlockSizeAES128;
     
-    size_t operationSize = dataLength + kCCBlockSizeAES128;
-    void *operationBytes = malloc(operationSize);
-    if (operationBytes == NULL) {
-        return nil;
-    }
-    size_t actualOutSize = 0;
+    void *buffer = malloc(bufferSize);
+    size_t numBytesDecrypted = 0;
     
     CCCryptorStatus cryptStatus = CCCrypt(kCCDecrypt,
-                                          kCCAlgorithmAES,
+                                          kCCAlgorithmAES128,
                                           kCCOptionPKCS7Padding,
-                                          keyBytes,
-                                          kCCKeySizeAES256,
-                                          ivBytes,
-                                          contentBytes,
+                                          keyPtr,
+                                          kCCBlockSizeAES128,
+                                          ivPtr,
+                                          contentData.bytes,
                                           dataLength,
-                                          operationBytes,
-                                          operationSize,
-                                          &actualOutSize);
+                                          buffer,
+                                          bufferSize,
+                                          &numBytesDecrypted);
     
     if (cryptStatus == kCCSuccess) {
-        NSData *decryptedData = [NSData dataWithBytesNoCopy:operationBytes length:actualOutSize];
+        NSData *decryptedData = [NSData dataWithBytesNoCopy:buffer length:numBytesDecrypted];
         
         return [[NSString alloc] initWithData:decryptedData encoding:NSUTF8StringEncoding];
     }
     
-    free(operationBytes);
-    operationBytes = NULL;
+    free(buffer);
     
     return nil;
 }

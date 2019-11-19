@@ -69,6 +69,10 @@ OSSClient *oss = nil;
         } else {
             NSData *jsonText=[aesDecrypt(aesKey, iv, [[NSString alloc] initWithData:tcs.task.result encoding:NSUTF8StringEncoding]) dataUsingEncoding:NSUTF8StringEncoding];
             NSLog(@"get token aes: %@", jsonText);
+
+            if (jsonText == nil) {
+                return nil;
+            }
             
             NSDictionary *object = [NSJSONSerialization JSONObjectWithData: jsonText
                                                                    options:kNilOptions
@@ -82,7 +86,7 @@ OSSClient *oss = nil;
             return token;
         }
     }];
-    
+
     oss = [[OSSClient alloc] initWithEndpoint:endpoint credentialProvider:credentialProvider];
     NSDictionary *arguments = @{
         @"instanceId": instanceId,
@@ -102,6 +106,31 @@ OSSClient *oss = nil;
     if (![self checkOss:result]) {
         return;
     }
+    
+    NSString *instanceId = call.arguments[@"instanceId"];
+    NSString *requestId = call.arguments[@"requestId"];
+    NSString *bucket = call.arguments[@"bucket"];
+    NSString *key = call.arguments[@"key"];
+    
+    NSError *error = nil;
+    BOOL isExist = [oss doesObjectExistInBucket:bucket objectKey:key error:&error];
+    
+    if (!error) {
+        NSDictionary *arguments = @{
+            @"instanceId": instanceId,
+            @"requestId":requestId,
+            @"bucket":bucket,
+            @"key":key,
+            @"exist": isExist? @"true" : @"false"
+        };
+        
+        
+        result(arguments);
+    } else {
+        result([FlutterError errorWithCode:@"SERVICE_EXCEPTION"
+                                   message:@"发生错误"
+                                   details:nil]);
+    }
 }
 
 - (void)delete:(FlutterMethodCall*)call result:(FlutterResult)result {
@@ -113,29 +142,23 @@ OSSClient *oss = nil;
     NSString *requestId = call.arguments[@"requestId"];
     NSString *bucket = call.arguments[@"bucket"];
     NSString *key = call.arguments[@"key"];
-
+    
     OSSDeleteObjectRequest *request = [OSSDeleteObjectRequest new];
     request.bucketName = bucket;
     request.objectKey = key;
     
     OSSTask *task = [oss deleteObject:request];
     
-    NSDictionary *arguments =nil;
-    
-    bool error = false;
-
     [task continueWithBlock:^id(OSSTask *task) {
-        error = task.error;
-        
         return nil;
     }];
-
+    
     [task waitUntilFinished];
     
-    if (error) {
+    if (task.error) {
         result([FlutterError errorWithCode:@"SERVICE_EXCEPTION"
-        message:@""
-        details:nil]);
+                                   message:@""
+                                   details:nil]);
     } else {
         NSDictionary *arguments = @{
             @"instanceId": instanceId,
@@ -148,16 +171,16 @@ OSSClient *oss = nil;
     }
 }
 
-- (bool)checkOss:(FlutterResult)result {
+- (BOOL)checkOss:(FlutterResult)result {
     if (oss == nil) {
         result([FlutterError errorWithCode:@"FAILED_PRECONDITION"
-                                       message:@"not initialized"
-                                       details:@"call init first"]);
-
-        return false;
+                                   message:@"not initialized"
+                                   details:@"call init first"]);
+        
+        return FALSE;
     }
-
-    return true;
+    
+    return TRUE;
 }
 
 @end
