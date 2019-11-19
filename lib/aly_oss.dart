@@ -39,6 +39,14 @@ class AlyOss {
     return await _invokeMethod('upload', request.toMap());
   }
 
+  Future<Map<String, dynamic>> exist(KeyRequest request) async {
+    return await _invokeMethod('exist', request.toMap());
+  }
+
+  Future<Map<String, dynamic>> delete(KeyRequest request) async {
+    return await _invokeMethod('delete', request.toMap());
+  }
+
   Future<Map<String, dynamic>> _invokeMethod(String method,
       [Map<String, dynamic> arguments = const {}]) {
     Map<String, dynamic> withId = Map.of(arguments);
@@ -73,6 +81,21 @@ class InitRequest extends Request {
     m['endpoint'] = endpoint;
     m['aesKey'] = aesKey;
     m['iv'] = iv;
+
+    return m;
+  }
+}
+
+class KeyRequest extends Request {
+  final String bucket;
+  final String key;
+
+  KeyRequest(requestId, this.bucket, this.key) : super(requestId);
+
+  Map<String, dynamic> toMap() {
+    var m = Map.of(super.toMap());
+    m['bucket'] = bucket;
+    m['key'] = key;
 
     return m;
   }

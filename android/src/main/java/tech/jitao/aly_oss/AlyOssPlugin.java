@@ -9,12 +9,10 @@ import com.alibaba.sdk.android.oss.callback.OSSCompletedCallback;
 import com.alibaba.sdk.android.oss.callback.OSSProgressCallback;
 import com.alibaba.sdk.android.oss.common.OSSConstants;
 import com.alibaba.sdk.android.oss.common.auth.OSSCredentialProvider;
-import com.alibaba.sdk.android.oss.common.auth.OSSCustomSignerCredentialProvider;
 import com.alibaba.sdk.android.oss.common.auth.OSSFederationCredentialProvider;
 import com.alibaba.sdk.android.oss.common.auth.OSSFederationToken;
 import com.alibaba.sdk.android.oss.common.utils.IOUtils;
-import com.alibaba.sdk.android.oss.common.utils.OSSUtils;
-import com.alibaba.sdk.android.oss.internal.OSSAsyncTask;
+import com.alibaba.sdk.android.oss.model.DeleteObjectRequest;
 import com.alibaba.sdk.android.oss.model.PutObjectRequest;
 import com.alibaba.sdk.android.oss.model.PutObjectResult;
 import com.google.common.collect.Maps;
@@ -24,7 +22,6 @@ import org.json.JSONObject;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.HashMap;
 import java.util.Map;
 
 import io.flutter.Log;
@@ -60,6 +57,12 @@ public class AlyOssPlugin implements MethodCallHandler {
                 break;
             case "upload":
                 upload(call, result);
+                break;
+            case "exist":
+                exist(call, result);
+                break;
+            case "delete":
+                delete(call, result);
                 break;
             default:
                 result.notImplemented();
@@ -111,9 +114,7 @@ public class AlyOssPlugin implements MethodCallHandler {
     }
 
     private void upload(MethodCall call, Result result) {
-        if (oss == null) {
-            result.error(ErrorCodes.FAILED_PRECONDITION, "not initialized", "call init first");
-
+        if (!checkOss(result)) {
             return;
         }
 
@@ -124,8 +125,8 @@ public class AlyOssPlugin implements MethodCallHandler {
         final String file = call.argument("file");
 
         Log.i("upload", "instanceId=" + instanceId + ", bucket=" + bucket + ", key=" + key + ", file=" + file);
-        PutObjectRequest put = new PutObjectRequest(bucket, key, file);
-        put.setProgressCallback(new OSSProgressCallback<PutObjectRequest>() {
+        PutObjectRequest request = new PutObjectRequest(bucket, key, file);
+        request.setProgressCallback(new OSSProgressCallback<PutObjectRequest>() {
             @Override
             public void onProgress(PutObjectRequest request, long currentSize, long totalSize) {
                 Log.d("onProgress", "currentSize: " + currentSize + " totalSize: " + totalSize);
@@ -146,15 +147,14 @@ public class AlyOssPlugin implements MethodCallHandler {
             }
         });
 
-        oss.asyncPutObject(put, new OSSCompletedCallback<PutObjectRequest, PutObjectResult>() {
+        oss.asyncPutObject(request, new OSSCompletedCallback<PutObjectRequest, PutObjectResult>() {
 
                     @Override
                     public void onSuccess(PutObjectRequest request, PutObjectResult result) {
-                        Log.d("onSuccess", "onSuccess");
-                        Log.d("ETag", result.getETag());
-                        Log.d("RequestId", result.getRequestId());
+                        Log.d("onSuccess", "RequestId: " + result.getRequestId());
 
                         final Map<String, String> arguments = Maps.newHashMap();
+                        arguments.put("success", "true");
                         arguments.put("instanceId", instanceId);
                         arguments.put("requestId", requestId);
                         arguments.put("bucket", bucket);
@@ -170,8 +170,17 @@ public class AlyOssPlugin implements MethodCallHandler {
 
                     @Override
                     public void onFailure(PutObjectRequest request, ClientException clientException, ServiceException serviceException) {
+                        final Map<String, String> arguments = Maps.newHashMap();
+                        arguments.put("success", "false");
+                        arguments.put("instanceId", instanceId);
+                        arguments.put("requestId", requestId);
+                        arguments.put("bucket", bucket);
+                        arguments.put("key", key);
+
                         if (clientException != null) {
                             Log.w("onFailure", "ClientException: " + clientException.getMessage());
+
+                            arguments.put("message", clientException.getMessage());
                         }
 
                         if (serviceException != null) {
@@ -180,7 +189,17 @@ public class AlyOssPlugin implements MethodCallHandler {
                                             "RequestId" + serviceException.getRequestId() +
                                             "HostId" + serviceException.getHostId() +
                                             "RawMessage" + serviceException.getRawMessage());
+
+                            arguments.put("message", serviceException.getRawMessage());
                         }
+
+                        REGISTRAR.activity().runOnUiThread(
+                                new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        CHANNEL.invokeMethod("onUpload", arguments);
+                                    }
+                                });
                     }
                 }
         );
@@ -190,6 +209,85 @@ public class AlyOssPlugin implements MethodCallHandler {
         map.put("requestId", requestId);
         map.put("bucket", bucket);
         map.put("key", key);
+
         result.success(map);
+    }
+
+    private void exist(MethodCall call, Result result) {
+        if (!checkOss(result)) {
+            return;
+        }
+
+        final String instanceId = call.argument("instanceId");
+        final String requestId = call.argument("requestId");
+        final String bucket = call.argument("bucket");
+        final String key = call.argument("key");
+
+        try {
+            final Map<String, String> map = Maps.newHashMap();
+            map.put("instanceId", instanceId);
+            map.put("requestId", requestId);
+            map.put("bucket", bucket);
+            map.put("key", key);
+
+            if (oss.doesObjectExist(bucket, key)) {
+                map.put("exist", "true");
+            } else {
+                map.put("exist", "false");
+            }
+
+            result.success(map);
+        } catch (ClientException e) {
+            Log.w("doesObjectExist", "ClientException: " + e.getMessage());
+
+            result.error(ErrorCodes.CLIENT_EXCEPTION, e.getMessage(), null);
+        } catch (ServiceException e) {
+            Log.w("doesObjectExist", "ServiceException: " + e.getRawMessage());
+
+            result.error(ErrorCodes.SERVICE_EXCEPTION, e.getMessage(), e.getRawMessage());
+        }
+    }
+
+    private void delete(MethodCall call, Result result) {
+        if (!checkOss(result)) {
+            return;
+        }
+
+        final String instanceId = call.argument("instanceId");
+        final String requestId = call.argument("requestId");
+        final String bucket = call.argument("bucket");
+        final String key = call.argument("key");
+
+
+        DeleteObjectRequest request = new DeleteObjectRequest(bucket, key);
+
+        try {
+            oss.deleteObject(request);
+            final Map<String, String> map = Maps.newHashMap();
+            map.put("instanceId", instanceId);
+            map.put("requestId", requestId);
+            map.put("bucket", bucket);
+            map.put("key", key);
+
+            result.success(map);
+        } catch (ClientException e) {
+            Log.w("deleteObject", "ClientException: " + e.getMessage());
+
+            result.error(ErrorCodes.CLIENT_EXCEPTION, e.getMessage(), null);
+        } catch (ServiceException e) {
+            Log.w("deleteObject", "ServiceException: " + e.getRawMessage());
+
+            result.error(ErrorCodes.SERVICE_EXCEPTION, e.getMessage(), e.getRawMessage());
+        }
+    }
+
+    private boolean checkOss(Result result) {
+        if (oss == null) {
+            result.error(ErrorCodes.FAILED_PRECONDITION, "not initialized", "call init first");
+
+            return false;
+        }
+
+        return true;
     }
 }
