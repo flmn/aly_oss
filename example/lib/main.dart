@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:aly_oss/aly_oss.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -22,7 +24,27 @@ class Main extends StatefulWidget {
 class _MainState extends State<Main> {
   final _uuid = Uuid();
   final AlyOss _alyOss = AlyOss();
-  String id;
+  StreamSubscription<UploadResponse> subscription;
+
+  @override
+  void initState() {
+    super.initState();
+
+    subscription = _alyOss.onUpload.listen((data) {
+      print(data.toString());
+      if (data.success) {
+      } else {}
+    });
+  }
+
+  @override
+  void dispose() {
+    if (subscription != null) {
+      subscription.cancel();
+    }
+
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

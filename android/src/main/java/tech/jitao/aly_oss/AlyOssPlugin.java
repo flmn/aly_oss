@@ -86,8 +86,6 @@ public class AlyOssPlugin implements MethodCallHandler {
                     String data = IOUtils.readStreamAsString(input, OSSConstants.DEFAULT_CHARSET_NAME);
                     String jsonText = AesHelper.decrypt(aesKey, iv, data);
 
-                    Log.i("StsServer", jsonText);
-
                     JSONObject jsonObj = new JSONObject(jsonText);
 
                     return new OSSFederationToken(jsonObj.getString("AccessKeyId"),
@@ -132,7 +130,6 @@ public class AlyOssPlugin implements MethodCallHandler {
         request.setProgressCallback(new OSSProgressCallback<PutObjectRequest>() {
             @Override
             public void onProgress(PutObjectRequest request, long currentSize, long totalSize) {
-                Log.d("onProgress", "currentSize: " + currentSize + " totalSize: " + totalSize);
                 final Map<String, String> arguments = Maps.newHashMap();
                 arguments.put("instanceId", instanceId);
                 arguments.put("requestId", requestId);

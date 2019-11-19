@@ -17,11 +17,28 @@ class AlyOss {
     print('AlyOss: ' + _instanceId);
   }
 
+  StreamController<ProgressResponse> _onProgressController =
+      StreamController<ProgressResponse>.broadcast();
+
+  Stream<ProgressResponse> get onProgress => _onProgressController.stream;
+
+  StreamController<UploadResponse> _onUploadController =
+      StreamController<UploadResponse>.broadcast();
+
+  Stream<UploadResponse> get onUpload => _onUploadController.stream;
+
   static Future<dynamic> _handler(MethodCall methodCall) async {
+    String instanceId = methodCall.arguments['instanceId'];
+    AlyOss instance = _instances[instanceId];
+
     switch (methodCall.method) {
       case 'onProgress':
+        instance._onProgressController
+            .add(ProgressResponse.fromMap(methodCall.arguments));
         break;
       case 'onUpload':
+        instance._onUploadController
+            .add(UploadResponse.fromMap(methodCall.arguments));
         break;
       default:
         print(
@@ -101,19 +118,72 @@ class KeyRequest extends Request {
   }
 }
 
-class UploadRequest extends Request {
-  final String bucket;
-  final String key;
+class UploadRequest extends KeyRequest {
   final String file;
 
-  UploadRequest(requestId, this.bucket, this.key, this.file) : super(requestId);
+  UploadRequest(requestId, bucket, key, this.file)
+      : super(requestId, bucket, key);
 
   Map<String, dynamic> toMap() {
     var m = Map.of(super.toMap());
-    m['bucket'] = bucket;
-    m['key'] = key;
     m['file'] = file;
 
     return m;
+  }
+}
+
+abstract class Response {
+  final bool success;
+  final String requestId;
+
+  Response({this.success, this.requestId});
+}
+
+class KeyResponse extends Response {
+  final String bucket;
+  final String key;
+
+  KeyResponse({success, requestId, this.bucket, this.key})
+      : super(success: success, requestId: requestId);
+}
+
+class UploadResponse extends KeyResponse {
+  UploadResponse({success, requestId, bucket, key})
+      : super(success: success, requestId: requestId, bucket: bucket, key: key);
+
+  UploadResponse.fromMap(Map map)
+      : super(
+          success: "true" == map['success'],
+          requestId: map['requestId'],
+          bucket: map['bucket'],
+          key: map['key'],
+        );
+
+  String toString() {
+    return '{success:$success, requestId:$requestId, bucket:$bucket, key:$key}';
+  }
+}
+
+class ProgressResponse extends KeyResponse {
+  int currentSize;
+  int totalSize;
+
+  ProgressResponse(
+      {success, requestId, bucket, key, this.currentSize, this.totalSize})
+      : super(success: success, requestId: requestId, bucket: bucket, key: key);
+
+  ProgressResponse.fromMap(Map map)
+      : super(
+          success: "true" == map['success'],
+          requestId: map['requestId'],
+          bucket: map['bucket'],
+          key: map['key'],
+        ) {
+    currentSize = int.parse(map['currentSize']);
+    totalSize = int.parse(map['totalSize']);
+  }
+
+  String toString() {
+    return '{success:$success, requestId:$requestId, bucket:$bucket, key:$key}, currentSize:$currentSize, totalSize:$totalSize';
   }
 }
