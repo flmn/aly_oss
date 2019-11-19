@@ -4,12 +4,10 @@
 
 NSObject<FlutterPluginRegistrar> *REGISTRAR;
 FlutterMethodChannel *CHANNEL;
-OSSClient *oss;
+OSSClient *oss = nil;
 
 @implementation AlyOssPlugin
 + (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
-    NSLog(@"registerWithRegistrar");
-
     CHANNEL = [FlutterMethodChannel
                methodChannelWithName:@"jitao.tech/aly_oss"
                binaryMessenger:[registrar messenger]];
@@ -31,7 +29,7 @@ OSSClient *oss;
         
         return;
     } else if ([@"delete" isEqualToString:call.method]) {
-        [self deleteObject:call result:result];
+        [self delete:call result:result];
         
         return;
     } else {
@@ -46,8 +44,6 @@ OSSClient *oss;
     NSString *endpoint = call.arguments[@"endpoint"];
     NSString *aesKey = call.arguments[@"aesKey"];
     NSString *iv = call.arguments[@"iv"];
-
-    NSLog(@"init: %@", call.arguments);
     
     id<OSSCredentialProvider> credentialProvider = [[OSSFederationCredentialProvider alloc] initWithFederationTokenGetter:^OSSFederationToken * {
         NSURL *url = [NSURL URLWithString:stsServer];
@@ -58,6 +54,7 @@ OSSClient *oss;
                                                     completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
             if (error) {
                 [tcs setError:error];
+                
                 return;
             }
             [tcs setResult:data];
@@ -67,15 +64,15 @@ OSSClient *oss;
         
         if (tcs.task.error) {
             NSLog(@"get token error: %@", tcs.task.error);
-
+            
             return nil;
         } else {
             NSData *jsonText=[aesDecrypt(aesKey, iv, [[NSString alloc] initWithData:tcs.task.result encoding:NSUTF8StringEncoding]) dataUsingEncoding:NSUTF8StringEncoding];
             NSLog(@"get token aes: %@", jsonText);
             
             NSDictionary *object = [NSJSONSerialization JSONObjectWithData: jsonText
-                                                                      options:kNilOptions
-                                                                        error:nil];
+                                                                   options:kNilOptions
+                                                                     error:nil];
             OSSFederationToken * token = [OSSFederationToken new];
             token.tAccessKey = [object objectForKey:@"AccessKeyId"];
             token.tSecretKey = [object objectForKey:@"AccessKeySecret"];
@@ -88,23 +85,79 @@ OSSClient *oss;
     
     oss = [[OSSClient alloc] initWithEndpoint:endpoint credentialProvider:credentialProvider];
     NSDictionary *arguments = @{
-                         @"instanceId": instanceId,
-                         @"requestId":requestId
-                         };
+        @"instanceId": instanceId,
+        @"requestId":requestId
+    };
     
     result(arguments);
 }
 
 - (void)upload:(FlutterMethodCall*)call result:(FlutterResult)result {
-    
+    if (![self checkOss:result]) {
+        return;
+    }
 }
 
 - (void)exist:(FlutterMethodCall*)call result:(FlutterResult)result {
-    
+    if (![self checkOss:result]) {
+        return;
+    }
 }
 
-- (void)deleteObject:(FlutterMethodCall*)call result:(FlutterResult)result {
+- (void)delete:(FlutterMethodCall*)call result:(FlutterResult)result {
+    if (![self checkOss:result]) {
+        return;
+    }
     
+    NSString *instanceId = call.arguments[@"instanceId"];
+    NSString *requestId = call.arguments[@"requestId"];
+    NSString *bucket = call.arguments[@"bucket"];
+    NSString *key = call.arguments[@"key"];
+
+    OSSDeleteObjectRequest *request = [OSSDeleteObjectRequest new];
+    request.bucketName = bucket;
+    request.objectKey = key;
+    
+    OSSTask *task = [oss deleteObject:request];
+    
+    NSDictionary *arguments =nil;
+    
+    bool error = false;
+
+    [task continueWithBlock:^id(OSSTask *task) {
+        error = task.error;
+        
+        return nil;
+    }];
+
+    [task waitUntilFinished];
+    
+    if (error) {
+        result([FlutterError errorWithCode:@"SERVICE_EXCEPTION"
+        message:@""
+        details:nil]);
+    } else {
+        NSDictionary *arguments = @{
+            @"instanceId": instanceId,
+            @"requestId":requestId,
+            @"bucket":bucket,
+            @"key":key
+        };
+        
+        result(arguments);
+    }
+}
+
+- (bool)checkOss:(FlutterResult)result {
+    if (oss == nil) {
+        result([FlutterError errorWithCode:@"FAILED_PRECONDITION"
+                                       message:@"not initialized"
+                                       details:@"call init first"]);
+
+        return false;
+    }
+
+    return true;
 }
 
 @end
