@@ -9,8 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  uuid: ^2.0.2
-  image_picker: ^0.6.1+11
+  uuid: ^2.0.4
+  image_picker: ^0.6.2+1
 
 dev_dependencies:
   flutter_test:
