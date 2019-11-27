@@ -51,7 +51,7 @@ class _MainState extends State<Main> {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('ALY OSS Plugin example app'),
+          title: const Text('Aly Oss Plugin example app'),
         ),
         body: Center(
           child: Column(
@@ -156,7 +156,7 @@ class _MainState extends State<Main> {
               ),
               SizedBox(
                 height: 180,
-              )
+              ),
             ],
           ),
         ),
