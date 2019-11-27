@@ -4,7 +4,7 @@ description: Demonstrates how to use the aly_oss plugin.
 publish_to: 'none'
 
 environment:
-  sdk: ">=2.1.0 <3.0.0"
+  sdk: ">=2.5.0 <3.0.0"
 
 dependencies:
   flutter:
@@ -20,6 +20,4 @@ dev_dependencies:
     path: ../
 
 flutter:
-
-#  assets:
-#    - assets/tower.jpg
+  uses-material-design: true
