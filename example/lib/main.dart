@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
+const bucketName = '<your bucket name>';
+
 void main() => runApp(App());
 
 class App extends StatelessWidget {
@@ -62,12 +64,8 @@ class _MainState extends State<Main> {
                 textColor: Colors.white,
                 child: Text('INIT'),
                 onPressed: () async {
-                  var result = await _alyOss.init(InitRequest(
-                      _uuid.v4(),
-                      'https://wsc-test.happysyrup.com/app/media/get-security-token',
-                      'oss-cn-beijing.aliyuncs.com',
-                      '11l%UVteM*ct@^Sn',
-                      '0000000000000000'));
+                  var result = await _alyOss
+                      .init(InitRequest(_uuid.v4(), 'https://<your server>/get-security-token', 'oss-cn-beijing.aliyuncs.com', '<your aes key>', '<your iv>'));
 
                   showDialog(
                     context: context,
@@ -93,11 +91,9 @@ class _MainState extends State<Main> {
                 textColor: Colors.white,
                 child: Text('UPLOAD'),
                 onPressed: () async {
-                  var image =
-                      await ImagePicker.pickImage(source: ImageSource.gallery);
+                  var image = await ImagePicker.pickImage(source: ImageSource.gallery);
 
-                  _alyOss.upload(UploadRequest(_uuid.v4(),
-                      'brand-happysyrup-com', 'ws/a.jpg', image.absolute.path));
+                  _alyOss.upload(UploadRequest(_uuid.v4(), bucketName, 'flutter/a.jpg', image.absolute.path));
                 },
               ),
               RaisedButton(
@@ -105,8 +101,7 @@ class _MainState extends State<Main> {
                 textColor: Colors.white,
                 child: Text('EXIST'),
                 onPressed: () async {
-                  var result = await _alyOss.exist(KeyRequest(
-                      _uuid.v4(), 'brand-happysyrup-com', 'ws/a.jpg'));
+                  var result = await _alyOss.exist(KeyRequest(_uuid.v4(), bucketName, 'flutter/a.jpg'));
 
                   showDialog(
                     context: context,
@@ -132,8 +127,7 @@ class _MainState extends State<Main> {
                 textColor: Colors.white,
                 child: Text('DELETE'),
                 onPressed: () async {
-                  var result = await _alyOss.delete(KeyRequest(
-                      _uuid.v4(), 'brand-happysyrup-com', 'ws/a.jpg'));
+                  var result = await _alyOss.delete(KeyRequest(_uuid.v4(), bucketName, 'flutter/a.jpg'));
 
                   showDialog(
                     context: context,

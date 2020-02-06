@@ -1,14 +1,7 @@
 # aly_oss
 
-A ALY OSS plugin.
+阿里云 oss 服务 flutter 版插件。
 
-## Getting Started
+## 基础使用
 
-This project is a starting point for a Flutter
-[plug-in package](https://flutter.dev/developing-packages/),
-a specialized package that includes platform-specific implementation code for
-Android and/or iOS.
-
-For help getting started with Flutter, view our 
-[online documentation](https://flutter.dev/docs), which offers tutorials, 
-samples, guidance on mobile development, and a full API reference.
+代码可参考 example。记得将 token server 地址、bucket 名称替换成你项目的值。
