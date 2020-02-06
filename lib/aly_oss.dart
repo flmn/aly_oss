@@ -4,8 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:uuid/uuid.dart';
 
 class AlyOss {
-  static final _channel = MethodChannel('jitao.tech/aly_oss')
-    ..setMethodCallHandler(_handler);
+  static final _channel = MethodChannel('jitao.tech/aly_oss')..setMethodCallHandler(_handler);
   static final _instances = Map<String, AlyOss>();
   static final _uuid = Uuid();
   String _instanceId;
@@ -17,13 +16,11 @@ class AlyOss {
     print('AlyOss: ' + _instanceId);
   }
 
-  StreamController<ProgressResponse> _onProgressController =
-      StreamController<ProgressResponse>.broadcast();
+  StreamController<ProgressResponse> _onProgressController = StreamController<ProgressResponse>.broadcast();
 
   Stream<ProgressResponse> get onProgress => _onProgressController.stream;
 
-  StreamController<UploadResponse> _onUploadController =
-      StreamController<UploadResponse>.broadcast();
+  StreamController<UploadResponse> _onUploadController = StreamController<UploadResponse>.broadcast();
 
   Stream<UploadResponse> get onUpload => _onUploadController.stream;
 
@@ -33,23 +30,27 @@ class AlyOss {
 
     switch (methodCall.method) {
       case 'onProgress':
-        instance._onProgressController
-            .add(ProgressResponse.fromMap(methodCall.arguments));
+        instance._onProgressController.add(ProgressResponse.fromMap(methodCall.arguments));
         break;
       case 'onUpload':
-        instance._onUploadController
-            .add(UploadResponse.fromMap(methodCall.arguments));
+        instance._onUploadController.add(UploadResponse.fromMap(methodCall.arguments));
         break;
       default:
-        print(
-            'Call ${methodCall.method} from platform, arguments=${methodCall.arguments}');
+        print('Call ${methodCall.method} from platform, arguments=${methodCall.arguments}');
     }
 
     return Future.value(true);
   }
 
+  /// Initialize plugin with [request]
   Future<Map<String, dynamic>> init(InitRequest request) async {
     return await _invokeMethod('init', request.toMap());
+  }
+
+  /// Shutdown plugin
+  void shutdown() {
+    _onProgressController.close();
+    _onUploadController.close();
   }
 
   Future<Map<String, dynamic>> upload(UploadRequest request) async {
@@ -64,8 +65,7 @@ class AlyOss {
     return await _invokeMethod('delete', request.toMap());
   }
 
-  Future<Map<String, dynamic>> _invokeMethod(String method,
-      [Map<String, dynamic> arguments = const {}]) {
+  Future<Map<String, dynamic>> _invokeMethod(String method, [Map<String, dynamic> arguments = const {}]) {
     Map<String, dynamic> withId = Map.of(arguments);
     withId['instanceId'] = _instanceId;
 
@@ -89,8 +89,7 @@ class InitRequest extends Request {
   final String aesKey;
   final String iv;
 
-  InitRequest(requestId, this.stsServer, this.endpoint, this.aesKey, this.iv)
-      : super(requestId);
+  InitRequest(requestId, this.stsServer, this.endpoint, this.aesKey, this.iv) : super(requestId);
 
   Map<String, dynamic> toMap() {
     var m = Map.of(super.toMap());
@@ -121,8 +120,7 @@ class KeyRequest extends Request {
 class UploadRequest extends KeyRequest {
   final String file;
 
-  UploadRequest(requestId, bucket, key, this.file)
-      : super(requestId, bucket, key);
+  UploadRequest(requestId, bucket, key, this.file) : super(requestId, bucket, key);
 
   Map<String, dynamic> toMap() {
     var m = Map.of(super.toMap());
@@ -143,13 +141,11 @@ class KeyResponse extends Response {
   final String bucket;
   final String key;
 
-  KeyResponse({success, requestId, this.bucket, this.key})
-      : super(success: success, requestId: requestId);
+  KeyResponse({success, requestId, this.bucket, this.key}) : super(success: success, requestId: requestId);
 }
 
 class UploadResponse extends KeyResponse {
-  UploadResponse({success, requestId, bucket, key})
-      : super(success: success, requestId: requestId, bucket: bucket, key: key);
+  UploadResponse({success, requestId, bucket, key}) : super(success: success, requestId: requestId, bucket: bucket, key: key);
 
   UploadResponse.fromMap(Map map)
       : super(
@@ -168,8 +164,7 @@ class ProgressResponse extends KeyResponse {
   int currentSize;
   int totalSize;
 
-  ProgressResponse(
-      {success, requestId, bucket, key, this.currentSize, this.totalSize})
+  ProgressResponse({success, requestId, bucket, key, this.currentSize, this.totalSize})
       : super(success: success, requestId: requestId, bucket: bucket, key: key);
 
   ProgressResponse.fromMap(Map map)
