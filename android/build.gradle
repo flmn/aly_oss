@@ -8,7 +8,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.5.0'
+        classpath 'com.android.tools.build:gradle:3.5.2'
     }
 }
 
@@ -34,6 +34,6 @@ android {
 }
 
 dependencies {
-    implementation 'com.google.guava:guava:28.1-android'
+    implementation 'com.google.guava:guava:28.2-android'
     implementation 'com.aliyun.dpa:oss-android-sdk:+'
 }

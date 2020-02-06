@@ -179,8 +179,8 @@ class ProgressResponse extends KeyResponse {
           bucket: map['bucket'],
           key: map['key'],
         ) {
-    currentSize = int.parse(map['currentSize']);
-    totalSize = int.parse(map['totalSize']);
+    currentSize = int.tryParse(map['currentSize']) ?? 0;
+    totalSize = int.tryParse(map['totalSize']) ?? 0;
   }
 
   String toString() {

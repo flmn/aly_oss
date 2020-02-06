@@ -1,11 +1,11 @@
 name: aly_oss
-description: A ALY OSS plugin.
-version: 0.0.1
-author:
-homepage:
+description: An aliyun oss plugin for flutter. Use this plugin to upload files to aliyun oss.
+version: 1.0.0
+author: Ji Tao <jitao@jitao.tech>
+homepage: https://github.com/flmn/aly_oss
 
 environment:
-  sdk: ">=2.1.0 <3.0.0"
+  sdk: ">=2.5.0 <3.0.0"
 
 dependencies:
   flutter:
